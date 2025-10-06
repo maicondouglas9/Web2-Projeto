@@ -1,7 +1,10 @@
 <?php
 
-require_once "src/DAO/PratoDAO.php";
-require_once "src/DTO/Prato.php";
+require_once "src/DAO/ReservaDAO.php";
+require_once "src/DTO/Reserva.php";
+
+$dao = new ReservaDAO();
+$reservas = $dao->listarReservas();
 
 session_start();
 $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
@@ -18,7 +21,7 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="css/estilos.css">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
-    <title>Registro de pratos</title>
+    <title>Lista de reservas</title>
     <link rel="icon" href="img/logoa.png" type="image/png">
 </head>
 
@@ -35,7 +38,6 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
                     <?php if (!$funcionarioLogado): ?>
                         <li class="nav-item" id="login-funcionario"><a class="nav-item" href="#">Funcionário</a></li>
                     <?php endif; ?>
-
                     <?php if ($funcionarioLogado): ?>
                         <li class="nav-item"><a class="nav-item" href="adicionar-prato.php">Adicionar Prato</a></li>
                         <li class="nav-item"><a class="nav-item" href="listar-pratos.php">Gerenciar Pratos</a></li>
@@ -58,24 +60,44 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
         <button id="fechar-carrinho">Fechar</button>
     </div>
 
+    <div id="modal-login" style="display:none; position:fixed; top:0; left:0; 
+    width:100%; height:100%; background:rgba(0,0,0,0.5); 
+    justify-content:center; align-items:center;">
+        <div style="background:#fff; padding:20px; border-radius:10px;">
+            <h3>Login Funcionário</h3>
+            <input type="text" id="usuario" placeholder="Usuário"><br><br>
+            <input type="password" id="senha" placeholder="Senha"><br><br>
+            <button id="btn-login">Entrar</button>
+            <button id="btn-fechar-login">Cancelar</button>
+        </div>
+    </div>
 
-    <form id="form-prato" method="post" enctype="multipart/form-data" action="salvar_prato.php">
-        <label>Nome do prato:</label>
-        <input type="text" id="nome-prato" name="nome" required>
+    <h1>Gerenciar Pratos</h1>
 
-        <label>Descrição:</label>
-        <textarea id="descricao-prato" name="descricao" required></textarea>
-
-        <label>Preço:</label>
-        <input type="text" id="preco-prato" name="preco" required oninput="formatarPreco(this)">
-
-        <label>Imagem do prato:</label>
-        <input type="file" id="imagem-prato" name="foto" accept="image/*" required>
-
-        <img id="preview-imagem" src="" alt="Prévia da imagem" style="max-width:200px; display:none;">
-
-        <button type="submit">Adicionar</button>
-    </form>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($reservas as $reserva): ?>
+                <tr>
+                    <td><?= $reserva->getId() ?></td>
+                    <td><?= htmlspecialchars($reserva->getNome()) ?></td>
+                    <td>
+                        <a href="editar-reserva.php?id=<?= $reserva->getId() ?>"><button
+                                class="btn-editar">Editar</button></a>
+                        <a href="excluir-reserva.php?id=<?= $reserva->getId() ?>">
+                            <button class="btn-excluir">Excluir</button>
+                        </a>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"

@@ -1,13 +1,7 @@
 <?php
-
-require_once "src/DAO/PratoDAO.php";
-require_once "src/DTO/Prato.php";
-
 session_start();
 $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
-
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -18,7 +12,7 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="css/estilos.css">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
-    <title>Registro de pratos</title>
+    <title>Verificar pedido</title>
     <link rel="icon" href="img/logoa.png" type="image/png">
 </head>
 
@@ -58,24 +52,25 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
         <button id="fechar-carrinho">Fechar</button>
     </div>
 
+    <div id="modal-login" style="display:none; position:fixed; top:0; left:0; 
+    width:100%; height:100%; background:rgba(0,0,0,0.5); 
+    justify-content:center; align-items:center;">
+        <div style="background:#fff; padding:20px; border-radius:10px;">
+            <h3>Login Funcionário</h3>
+            <input type="text" id="usuario" placeholder="Usuário"><br><br>
+            <input type="password" id="senha" placeholder="Senha"><br><br>
+            <button id="btn-login">Entrar</button>
+            <button id="btn-fechar-login">Cancelar</button>
+        </div>
+    </div>
 
-    <form id="form-prato" method="post" enctype="multipart/form-data" action="salvar_prato.php">
-        <label>Nome do prato:</label>
-        <input type="text" id="nome-prato" name="nome" required>
 
-        <label>Descrição:</label>
-        <textarea id="descricao-prato" name="descricao" required></textarea>
-
-        <label>Preço:</label>
-        <input type="text" id="preco-prato" name="preco" required oninput="formatarPreco(this)">
-
-        <label>Imagem do prato:</label>
-        <input type="file" id="imagem-prato" name="foto" accept="image/*" required>
-
-        <img id="preview-imagem" src="" alt="Prévia da imagem" style="max-width:200px; display:none;">
-
-        <button type="submit">Adicionar</button>
+    <form action="verificar_pedido.php" id="form-prato" method="POST">
+        <label for="codigo">Digite o código do pedido:</label>
+        <input type="number" name="codigo" id="codigo" required>
+        <button type="submit">Verificar</button>
     </form>
+
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"

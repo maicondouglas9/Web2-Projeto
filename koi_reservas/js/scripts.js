@@ -15,19 +15,14 @@ if (carrinhoImg && carrinho && fecharCarrinho && carrinhoLista) {
 
   function atualizarTotal() {
     let total = 0;
-
     carrinhoLista.querySelectorAll("li").forEach(item => {
       let preco = parseFloat(item.querySelector(".preco").textContent.replace("R$ ", "").replace(",", "."));
       let qtd = parseInt(item.querySelector(".qtd").textContent);
       total += preco * qtd;
     });
-
-    const freteInput = document.getElementById("frete");
-    let frete = freteInput ? parseFloat(freteInput.value) : 0;
-    if (!isNaN(frete)) total += frete;
-
     const totalElement = document.getElementById("total");
     if (totalElement) totalElement.textContent = "Total: R$ " + total.toFixed(2).replace(".", ",");
+    return total;
   }
 
   function adicionarAoCarrinho(nome, preco, imgSrc) {
@@ -47,8 +42,7 @@ if (carrinhoImg && carrinho && fecharCarrinho && carrinhoLista) {
     li.style.alignItems = "center";
     li.style.justifyContent = "space-between";
     li.innerHTML = `
-      <img src="${imgSrc}" alt="${nome}" 
-          style="width:50px; height:50px; object-fit:cover; border-radius:5px; margin-right:10px;">
+      <img src="${imgSrc}" alt="${nome}" style="width:50px; height:50px; object-fit:cover; border-radius:5px; margin-right:10px;">
       <div style="flex:1;">
         <strong>${nome}</strong><br>
         <span class="preco">R$ ${preco}</span>
@@ -90,8 +84,7 @@ if (carrinhoImg && carrinho && fecharCarrinho && carrinhoLista) {
     atualizarTotal();
   }
 
-  const botoesAdd = document.querySelectorAll(".btn-add");
-  botoesAdd.forEach(botao => {
+  document.querySelectorAll(".btn-add").forEach(botao => {
     botao.addEventListener("click", () => {
       const nome = botao.getAttribute("data-nome");
       const preco = botao.getAttribute("data-preco");
@@ -100,37 +93,33 @@ if (carrinhoImg && carrinho && fecharCarrinho && carrinhoLista) {
     });
   });
 
-  const cepInput = document.getElementById("cep");
-  if (cepInput) {
-    cepInput.addEventListener("input", function(e) {
-      let value = e.target.value.replace(/\D/g, ""); 
-      if (value.length > 5) {
-        e.target.value = value.slice(0, 5) + "-" + value.slice(5, 8);
-      } else {
-        e.target.value = value;
-      }
+
+  const finalizarCompra = document.getElementById("finalizar-compra");
+  if (finalizarCompra) {
+    finalizarCompra.addEventListener("click", () => {
+      let itens = [];
+      carrinhoLista.querySelectorAll("li").forEach(item => {
+        itens.push({
+          nome: item.getAttribute("data-nome"),
+          qtd: parseInt(item.querySelector(".qtd").textContent),
+          preco: parseFloat(item.querySelector(".preco").textContent.replace("R$ ", "").replace(",", "."))
+        });
+      });
+
+      let total = atualizarTotal();
+
+
+      fetch("checkout.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens, total })
+      }).then(() => {
+        window.location.href = "checkout.php";
+      });
     });
   }
-
-  const freteInput = document.getElementById("frete");
-  if (freteInput) freteInput.addEventListener("change", atualizarTotal);
 }
 
-const finalizarCompra = document.getElementById("finalizar-compra");
-
-if (finalizarCompra && carrinhoLista && carrinho) {
-  finalizarCompra.addEventListener("click", () => {
-
-    carrinhoLista.innerHTML = "";
-
-    carrinho.classList.remove("ativo");
-
-    const totalElement = document.getElementById("total");
-    if (totalElement) totalElement.textContent = "Total: R$ 0,00";
-
-    alert("Compra finalizada com sucesso!");
-  });
-}
 
 // LOGIN FUNCIONÁRIO
 const loginFuncionario = document.getElementById('login-funcionario');
@@ -142,9 +131,7 @@ let funcionarioLogado = false;
 
 if (loginFuncionario) {
   loginFuncionario.addEventListener('click', () => {
-    if (!funcionarioLogado && modalLogin) {
-      modalLogin.style.display = 'flex';
-    }
+    if (!funcionarioLogado && modalLogin) modalLogin.style.display = 'flex';
   });
 }
 
@@ -156,42 +143,38 @@ if (btnFecharLogin) {
 
 if (btnLogin) {
   btnLogin.addEventListener('click', () => {
-    const usuarioInput = document.getElementById('usuario');
-    const senhaInput = document.getElementById('senha');
-    const usuario = usuarioInput ? usuarioInput.value : '';
-    const senha = senhaInput ? senhaInput.value : '';
+    const usuario = document.getElementById('usuario').value;
+    const senha = document.getElementById('senha').value;
 
-    if (usuario === 'admin' && senha === '1234') {
-      funcionarioLogado = true;
-      if (modalLogin) modalLogin.style.display = 'none';
-      if (loginFuncionario) {
-      loginFuncionario.textContent = 'Adicionar Prato';
-
-      loginFuncionario.replaceWith(loginFuncionario.cloneNode(true));
-      const novoBotao = document.getElementById('login-funcionario');
-    
-      novoBotao.addEventListener('click', () => {
-      window.location.href = 'adicionar-prato.php';
-    });
-  }
-  alert('Login realizado com sucesso!');
-} else {
-      alert('Usuário ou senha incorretos!');
-    }
+    fetch('login-funcionario.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `usuario=${encodeURIComponent(usuario)}&senha=${encodeURIComponent(senha)}`
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          modalLogin.style.display = 'none';
+          alert('Login realizado com sucesso!');
+          window.location.reload();
+        } else {
+          alert(data.msg);
+        }
+      }).catch(err => console.error(err));
   });
 }
 
-// PREVIEW IMAGEM CADASTRO PRATO
-const form = document.getElementById('form-prato');
+
+// PREVIEW IMAGEM PRATO
 const imagemInput = document.getElementById('imagem-prato');
 const preview = document.getElementById('preview-imagem');
 
 if (imagemInput) {
   imagemInput.addEventListener('change', () => {
     const file = imagemInput.files[0];
-    if(file){
+    if (file) {
       const reader = new FileReader();
-      reader.onload = function(e){
+      reader.onload = function (e) {
         if (preview) {
           preview.src = e.target.result;
           preview.style.display = 'block';
@@ -207,37 +190,6 @@ if (imagemInput) {
   });
 }
 
-if (form) {
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const nome = document.getElementById('nome-prato').value;
-    const descricao = document.getElementById('descricao-prato').value;
-    const preco = document.getElementById('preco-prato').value;
-
-    let imagemData = '';
-    if (imagemInput && imagemInput.files[0] && preview) {
-      imagemData = preview.src;
-    }
-
-    console.log('Prato adicionado:', nome, descricao, preco, imagemData);
-    alert('Prato adicionado com sucesso!');
-
-    window.location.href = 'index.php';
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const formReserva = document.getElementById("form-reserva");
-  if (formReserva) {
-    formReserva.addEventListener("submit", function (e) {
-      e.preventDefault();
-      alert("Reserva feita com sucesso!");
-      window.location.href = "index.php"; 
-    });
-  }
-});
-
 // FORMATAR PREÇO
 function formatarPreco(input) {
   let valor = input.value;
@@ -249,9 +201,25 @@ function formatarPreco(input) {
   input.value = partes.join(',');
 }
 
-// EXCLUIR PRATO (CARDÁPIO)
-document.querySelectorAll(".btn-excluir").forEach(btn => {
-  btn.addEventListener("click", () => {
-    btn.parentElement.remove();
-  });
+// CONFIRMAÇÃO DE EXCLUSÃO
+document.addEventListener("click", function (e) {
+  const btnExcluir = e.target.closest(".btn-excluir");
+  if (!btnExcluir) return;
+
+  e.preventDefault();
+
+  if (!confirm("Deseja realmente excluir?")) return;
+
+
+  const link = btnExcluir.closest("a");
+  if (link && link.href) {
+    window.location.href = link.href;
+    return;
+  }
+
+
+
+  const form = btnExcluir.closest("form");
+  if (form) form.submit();
 });
+

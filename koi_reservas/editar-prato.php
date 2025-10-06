@@ -1,7 +1,73 @@
 <?php
+require_once "src/DAO/PratoDAO.php";
+require_once "src/DTO/Prato.php";
+
 session_start();
 $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
+
+$dao = new PratoDAO();
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $id = intval($_POST['id']);
+    $nome = $_POST['nome'];
+    $descricao = $_POST['descricao'];
+    $preco = floatval(str_replace(',', '.', str_replace('.', '', $_POST['preco'])));
+    $fotoAtual = $_POST['foto-atual'];
+    $foto = $fotoAtual;
+
+
+    if (isset($_FILES['foto']) && $_FILES['foto']['tmp_name'] != '') {
+        $pasta = __DIR__ . "/img_pratos/";
+        $nomeArquivo = time() . '_' . basename($_FILES['foto']['name']);
+        $caminhoFinal = $pasta . $nomeArquivo;
+
+        if (!move_uploaded_file($_FILES['foto']['tmp_name'], $caminhoFinal)) {
+            echo "Erro ao mover a imagem!";
+            exit;
+        }
+
+        $foto = "img_pratos/" . $nomeArquivo;
+    }
+
+    $prato = new Prato();
+    $prato->setId($id);
+    $prato->setNome($nome);
+    $prato->setDescricao($descricao);
+    $prato->setPreco($preco);
+    $prato->setFoto($foto);
+
+    if ($dao->alterarPrato($prato)) {
+        header("Location: listar-pratos.php");
+        exit;
+    } else {
+        echo "Erro ao atualizar prato!";
+        exit;
+    }
+}
+
+
+$idPrato = $_GET['id'] ?? null;
+if (!$idPrato) {
+    echo "Prato não encontrado!";
+    exit;
+}
+
+$pratos = $dao->listarPratos();
+$prato = null;
+foreach ($pratos as $p) {
+    if ($p->getId() == $idPrato) {
+        $prato = $p;
+        break;
+    }
+}
+
+if (!$prato) {
+    echo "Prato não encontrado!";
+    exit;
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -33,7 +99,6 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
                     <?php if ($funcionarioLogado): ?>
                         <li class="nav-item"><a class="nav-item" href="adicionar-prato.php">Adicionar Prato</a></li>
                         <li class="nav-item"><a class="nav-item" href="listar-pratos.php">Gerenciar Pratos</a></li>
-                        <li class="nav-item"><a class="nav-item" href="listar-reservas.php">Gerenciar Reservas</a></li>
                     <?php endif; ?>
                     <?php if ($funcionarioLogado): ?>
                         <li class="nav-item"><a class="nav-item" href="logout.php">Sair</a></li>
@@ -64,20 +129,54 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
         </div>
     </div>
 
+    <form id="form-prato" method="post" enctype="multipart/form-data" action="editar-prato.php">
+        <input type="hidden" name="id" value="<?= $prato->getId() ?>">
+        <input type="hidden" name="foto-atual" value="<?= $prato->getFoto() ?>">
 
-    <div class="contato-container">
-        <h1>Contato - Koi Reservas</h1>
-        <p>
-            Bem-vindo ao <strong>Koi Reservas</strong>! Aqui você pode agendar seu horário e aproveitar uma experiência
-            gastronômica japonesa única. Nosso objetivo é oferecer pratos frescos e deliciosos, em um ambiente
-            acolhedor, para que cada refeição seja especial.
-        </p>
+        <label>Nome do prato:</label>
+        <input type="text" id="nome-prato" name="nome" value="<?= htmlspecialchars($prato->getNome()) ?>" required>
 
-        <h2>Fale Conosco</h2>
-        <p>Telefone: (XX) XXXX-XXXX</p>
-        <p>Email: contato@koireservas.com</p>
-    </div>
+        <label>Descrição:</label>
+        <textarea id="descricao-prato" name="descricao"
+            required><?= htmlspecialchars($prato->getDescricao()) ?></textarea>
 
+        <label>Preço:</label>
+        <input type="text" id="preco-prato" name="preco" value="<?= number_format($prato->getPreco(), 2, ',', '.') ?>"
+            required oninput="formatarPreco(this)">
+
+        <label>Imagem do prato:</label>
+        <input type="file" id="imagem-prato" name="foto" accept="image/*">
+
+        <img id="preview-imagem" src="<?= $prato->getFoto() ?>" alt="Prévia da imagem"
+            style="max-width:200px; display:block; margin-top:10px;">
+
+        <button type="submit">Atualizar</button>
+    </form>
+
+    <script>
+        const imagemInput = document.getElementById('imagem-prato');
+        const preview = document.getElementById('preview-imagem');
+
+        imagemInput.addEventListener('change', () => {
+            const file = imagemInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = '<?= $prato->getFoto() ?>';
+            }
+        });
+
+        function formatarPreco(input) {
+            let valor = input.value.replace(/\D/g, '');
+            valor = (valor / 100).toFixed(2);
+            input.value = valor.replace('.', ',');
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
         crossorigin="anonymous"></script>

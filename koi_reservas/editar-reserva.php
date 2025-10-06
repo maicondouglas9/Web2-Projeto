@@ -1,10 +1,49 @@
 <?php
+require_once __DIR__ . "/src/DAO/ReservaDAO.php";
+require_once __DIR__ . "/src/DTO/Reserva.php";
 
 session_start();
 $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
 
-?>
+$dao = new ReservaDAO();
+$msg = "";
 
+if (isset($_GET['id'])) {
+    $id = intval($_GET['id']);
+    $reservas = $dao->listarReservas();
+
+    // procura a reserva pelo id
+    $reserva = null;
+    foreach ($reservas as $r) {
+        if ($r->getId() == $id) {
+            $reserva = $r;
+            break;
+        }
+    }
+
+    if (!$reserva) {
+        die("Reserva não encontrada!");
+    }
+}
+
+// Se enviou formulário
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $reserva = new Reserva();
+    $reserva->setId($_POST['id']);
+    $reserva->setNome($_POST['nome']);
+    $reserva->setTelefone($_POST['telefone']);
+    $reserva->setDataReserva($_POST['data_reserva']);
+    $reserva->setHorario($_POST['horario']);
+
+    if ($dao->alterarReserva($reserva)) {
+        header("Location: listar-reservas.php");
+        exit;
+    } else {
+        $msg = "<p class='alerta-erro'>Erro ao atualizar a reserva.</p>";
+    }
+
+}
+?>
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -16,7 +55,7 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="css/estilos.css">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
-    <title>Cardápio</title>
+    <title>Contato</title>
     <link rel="icon" href="img/logoa.png" type="image/png">
 </head>
 
@@ -37,7 +76,6 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
                     <?php if ($funcionarioLogado): ?>
                         <li class="nav-item"><a class="nav-item" href="adicionar-prato.php">Adicionar Prato</a></li>
                         <li class="nav-item"><a class="nav-item" href="listar-pratos.php">Gerenciar Pratos</a></li>
-                        <li class="nav-item"><a class="nav-item" href="listar-reservas.php">Gerenciar Reservas</a></li>
                     <?php endif; ?>
                     <?php if ($funcionarioLogado): ?>
                         <li class="nav-item"><a class="nav-item" href="logout.php">Sair</a></li>
@@ -53,16 +91,12 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
     <div id="carrinho">
         <h3>Seu Carrinho</h3>
         <ul id="carrinho-lista"></ul>
-        <button id="finalizar-compra">Finalizar Compra</button>
         <button id="fechar-carrinho">Fechar</button>
-
-        <div id="carrinho-info">
-            <p id="total">Total: R$ 0,00</p>
-        </div>
     </div>
 
-    <div id="modal-login"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+    <div id="modal-login" style="display:none; position:fixed; top:0; left:0; 
+    width:100%; height:100%; background:rgba(0,0,0,0.5); 
+    justify-content:center; align-items:center;">
         <div style="background:#fff; padding:20px; border-radius:10px;">
             <h3>Login Funcionário</h3>
             <input type="text" id="usuario" placeholder="Usuário"><br><br>
@@ -72,37 +106,53 @@ $funcionarioLogado = $_SESSION['funcionarioLogado'] ?? false;
         </div>
     </div>
 
-    <main id="cardapio">
-        <h2
-            style="color: #ffffffff; background-color: #00000065; border-radius: 5px; display: inline-block; padding: 0 8px;">
-            Nosso Cardápio
-        </h2>
+    <form id="form-prato" method="post" action="editar-reserva.php">
+        <input type="hidden" name="id" value="<?= $reserva->getId() ?>">
 
-        <div class="pratos-container">
-            <?php
-            require_once "src/DAO/PratoDAO.php";
-            require_once "src/DTO/Prato.php";
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome-prato" name="nome" value="<?= htmlspecialchars($reserva->getNome()) ?>" required>
 
-            $dao = new PratoDAO();
-            $pratos = $dao->listarPratos();
+        <label for="telefone">Telefone:</label>
+        <input type="text" id="telefone-prato" name="telefone" maxlength="11"
+            value="<?= htmlspecialchars($reserva->getTelefone()) ?>" required>
 
-            foreach ($pratos as $prato): ?>
-                <div class="prato-card">
-                    <img src="<?= $prato->getFoto() ?>" alt="<?= $prato->getNome() ?>">
-                    <h3><?= $prato->getNome() ?></h3>
-                    <p><?= $prato->getDescricao() ?></p>
-                    <span class="preco">R$ <?= number_format($prato->getPreco(), 2, ',', '.') ?></span>
-                    <button class="btn-add" data-nome="<?= $prato->getNome() ?>" data-preco="<?= $prato->getPreco() ?>"
-                        data-img="<?= $prato->getFoto() ?>">
-                        Adicionar ao Carrinho
-                    </button>
-                    <button class="btn-excluir" style="display:none;">Excluir</button>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    </main>
+        <label for="data_reserva">Data:</label>
+        <input type="date" id="data-prato" name="data_reserva"
+            value="<?= htmlspecialchars($reserva->getDataReserva()) ?>" required>
+
+        <label for="horario">Horário:</label>
+        <input type="time" id="horario-prato" name="horario" value="<?= substr($reserva->getHorario(), 0, 5) ?>"
+            required>
+
+        <button type="submit">Atualizar</button>
+    </form>
 
 
+
+    <script>
+        const imagemInput = document.getElementById('imagem-prato');
+        const preview = document.getElementById('preview-imagem');
+
+        imagemInput.addEventListener('change', () => {
+            const file = imagemInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = '<?= $prato->getFoto() ?>';
+            }
+        });
+
+        function formatarPreco(input) {
+            let valor = input.value.replace(/\D/g, '');
+            valor = (valor / 100).toFixed(2);
+            input.value = valor.replace('.', ',');
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
         crossorigin="anonymous"></script>
